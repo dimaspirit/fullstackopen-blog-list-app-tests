@@ -23,7 +23,7 @@ describe('Blog list app', () => {
   }
 
   beforeEach(async ({page}) => {
-    await page.goto('http://localhost:5173')
+    await page.goto('/')
   })
 
   test('has title', async ({ page }) => {
@@ -72,8 +72,6 @@ describe('Blog list app', () => {
       })
 
       loginWith(page, username, password, loginBtnLabel);
-
-      await page.goto('/')
     });
   
     test('a new blog can be created', async ({ page }) => {
@@ -96,8 +94,44 @@ describe('Blog list app', () => {
       await page.getByRole('button', { name: 'Like' }).click()
 
       await expect(page.getByText('likes: 1')).toBeVisible();
+    })
+
+    test('a blog can be deleted by creator', async ({ page }) => {
+      const author = 'Wes Bos'
+      const title = 'Javascript and magic'
+      const url = 'wesbos.com/jsandmagic'
+
+      await addBlog(page, author, title, url)
+
+      await page.getByRole('button', { name: 'show' }).click()
+      await page.getByRole('button', { name: 'Delete' }).click()
 
       await expect(page.getByText(`${title} by ${author}`)).toBeVisible()
+    })
+
+    test('a blog can NOT be deleted by another user', async ({ page, request }) => {
+      const blog = {
+        author: 'Wes Bos',
+        title: 'Javascript and magic',
+        url: 'wesbos.com/jsandmagic'
+      }
+
+      const user = {
+        username: 'test2',
+        password: '1234567' 
+      }
+
+      await addBlog(page, blog.author, blog.title, blog.url)
+
+      await page.getByRole('button', { name: 'Logout' }).click()
+
+      await request.post('/api/users', { data: user })
+
+      loginWith(page, user.username, user.password, loginBtnLabel);
+
+      await page.getByRole('button', { name: 'show' }).click()
+
+      await expect( page.getByRole('button', { name: 'Delete' })).not.toBeVisible()
     })
   })
 })
