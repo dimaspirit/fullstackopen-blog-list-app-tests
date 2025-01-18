@@ -12,6 +12,16 @@ describe('Blog list app', () => {
     await page.getByRole('button', { name: btnLabel }).click() 
   }
 
+  const addBlog = async (page, author, title, url) => {
+    await page.getByRole('button', { name: /new blog/ }).click()
+
+    await page.locator('#blog-form-author').fill(author)
+    await page.locator('#blog-form-title').fill(title)
+    await page.locator('#blog-form-url').fill(url)
+
+    await page.getByRole('button', { name: 'Added new blog' }).click()
+  }
+
   beforeEach(async ({page}) => {
     await page.goto('http://localhost:5173')
   })
@@ -71,15 +81,23 @@ describe('Blog list app', () => {
       const title = 'Javascript and magic'
       const url = 'wesbos.com/jsandmagic'
 
-      await page.getByRole('button', { name: /new blog/ }).click()
+      await addBlog(page, author, title, url)
 
-      await page.locator('#blog-form-author').fill(author);
-      await page.locator('#blog-form-title').fill(title);
-      await page.locator('#blog-form-url').fill(url);
+      await expect(page.getByText(`${title} by ${author}`)).toBeVisible()
+    })
 
-      await page.getByRole('button', { name: 'Added new blog' }).click();
+    test('a blog can be liked', async ({ page }) => {
+      const author = 'Wes Bos'
+      const title = 'Javascript and magic'
+      const url = 'wesbos.com/jsandmagic'
 
-      await expect(page.getByText(`${title} by ${author}`)).toBeVisible();
+      await addBlog(page, author, title, url)
+      await page.getByRole('button', { name: 'show' }).click()
+      await page.getByRole('button', { name: 'Like' }).click()
+
+      await expect(page.getByText('likes: 1')).toBeVisible();
+
+      await expect(page.getByText(`${title} by ${author}`)).toBeVisible()
     })
   })
 })
