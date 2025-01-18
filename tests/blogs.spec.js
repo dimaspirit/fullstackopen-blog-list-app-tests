@@ -49,13 +49,13 @@ describe('Blog list app', () => {
     });
  
     test('succeeds with correct credentials', async ({ page }) => {
-      loginWith(page, username, password, loginBtnLabel);
+      await loginWith(page, username, password, loginBtnLabel);
 
       await expect(page.getByText(username)).toBeVisible();
     })
 
     test('fails with wrong credentials', async ({ page }) => {
-      loginWith(page, username, '1234567', loginBtnLabel);
+      await loginWith(page, username, '1234567', loginBtnLabel);
   
       await expect(page.getByText(/invalid username or password/)).toBeVisible();
     })
@@ -71,7 +71,7 @@ describe('Blog list app', () => {
         }
       })
 
-      loginWith(page, username, password, loginBtnLabel);
+      await loginWith(page, username, password, loginBtnLabel);
     });
   
     test('a new blog can be created', async ({ page }) => {
@@ -81,7 +81,7 @@ describe('Blog list app', () => {
 
       await addBlog(page, author, title, url)
 
-      await expect(page.getByText(`${title} by ${author}`)).toBeVisible()
+      await expect(page.getByText(`${title} by ${author}`)).not.toBeVisible()
     })
 
     test('a blog can be liked', async ({ page }) => {
@@ -127,11 +127,58 @@ describe('Blog list app', () => {
 
       await request.post('/api/users', { data: user })
 
-      loginWith(page, user.username, user.password, loginBtnLabel);
+      await loginWith(page, user.username, user.password, loginBtnLabel);
 
       await page.getByRole('button', { name: 'show' }).click()
 
       await expect( page.getByRole('button', { name: 'Delete' })).not.toBeVisible()
+    })
+
+    test('blogs sorted by likes', async ({ page, request }) => {
+      const blogs = [{
+        author: 'Wes Bos',
+        title: 'Javascript and await',
+        url: 'wesbos.com/jsawait',
+      },
+      {
+        author: 'Wes Col',
+        title: 'Javascript and promises',
+        url: 'wesbos.com/jspromises',
+      }]
+
+      await addBlog(page, blogs[0].author, blogs[0].title, blogs[0].url)
+      const blogFirst = page.getByText(`${blogs[0].title} by ${blogs[0].author}`)
+      await blogFirst.waitFor()
+
+      await addBlog(page, blogs[1].author, blogs[1].title, blogs[1].url)
+      const blogSecond = page.getByText(`${blogs[1].title} by ${blogs[1].author}`)
+      await blogSecond.waitFor()
+
+      const showBtns = await page.getByRole('button', { name: 'show' }).all();
+
+      await showBtns[0].click()
+      const urlTitle1 = page.getByText(blogs[0].url);
+      await urlTitle1.waitFor();
+
+      await showBtns[1].click()
+      const urlTitle2 = page.getByText(blogs[1].url);
+      await urlTitle2.waitFor();
+
+      const likesBtns = await page.getByRole('button', { name: 'Like' }).all();
+
+      await likesBtns[0].click();
+
+      await likesBtns[1].click();
+      await likesBtns[1].click();
+
+      let prevLikesAmount = 0;
+
+      for (const t of await page.locator('#blog-description-likes').all()) {
+        const likesAmountText = await t.textContent();
+        const likes = likesAmountText.replace('likes:', '').trim();
+        expect(+likes).toBeLessThanOrEqual(prevLikesAmount);
+        prevLikesAmount = +likes;
+      }
     })
   })
 })
